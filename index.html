@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Pendo Product Usage Dashboard</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #181c27;
+      --surface2: #1e2333;
+      --border: rgba(255,255,255,0.07);
+      --border2: rgba(255,255,255,0.12);
+      --text: #e8eaf0;
+      --text2: #8890a8;
+      --text3: #545c74;
+      --accent: #4f7fff;
+      --accent2: #6ee7b7;
+      --accent3: #f59e42;
+      --danger: #f87171;
+      --success: #6ee7b7;
+      --radius: 12px;
+      --radius-sm: 8px;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 15px; }
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    /* ── Layout ── */
+    .app { display: flex; flex-direction: column; min-height: 100vh; }
+
+    header {
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--surface);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .header-left { display: flex; align-items: center; gap: 12px; }
+    .logo {
+      width: 32px; height: 32px;
+      background: var(--accent);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .logo svg { width: 18px; height: 18px; fill: white; }
+    .app-title { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; color: var(--text); }
+    .app-title span { color: var(--text2); font-weight: 400; }
+    .header-right { display: flex; align-items: center; gap: 8px; }
+    #last-updated { font-size: 12px; color: var(--text3); font-family: 'DM Mono', monospace; }
+
+    main { padding: 2rem; max-width: 1400px; width: 100%; margin: 0 auto; flex: 1; }
+
+    /* ── Config panel ── */
+    .config-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 1.5rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: flex-end;
+    }
+    .field { display: flex; flex-direction: column; gap: 5px; }
+    .field label { font-size: 11px; font-weight: 500; color: var(--text2); text-transform: uppercase; letter-spacing: 0.06em; }
+    .field input {
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      font-size: 13px;
+      padding: 8px 12px;
+      outline: none;
+      transition: border-color 0.15s;
+      height: 38px;
+    }
+    .field input:focus { border-color: var(--accent); }
+    .field input[type=date] { color-scheme: dark; cursor: pointer; }
+    .field.api-field { flex: 1; min-width: 260px; }
+    .field.api-field input { min-width: 100%; }
+    .field select {
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      padding: 0 32px 0 12px;
+      outline: none;
+      height: 38px;
+      min-width: 180px;
+      cursor: pointer;
+      appearance: none;
+      -webkit-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%238890a8' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+      transition: border-color 0.15s;
+    }
+    .field select:focus { border-color: var(--accent); }
+    .field select:disabled { opacity: 0.45; cursor: not-allowed; }
+    .field select option { background: var(--surface2); color: var(--text); }
+    .app-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      font-size: 11px; font-family: 'DM Mono', monospace;
+      color: var(--text3); margin-top: 3px; min-height: 14px;
+    }
+    .app-badge.loading { color: var(--accent); }
+    .app-badge.loaded { color: var(--success); }
+    .btn {
+      height: 38px;
+      padding: 0 20px;
+      border-radius: var(--radius-sm);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .btn-primary {
+      background: var(--accent);
+      color: white;
+    }
+    .btn-primary:hover { background: #3d6de8; }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-ghost {
+      background: transparent;
+      color: var(--text2);
+      border: 1px solid var(--border2);
+    }
+    .btn-ghost:hover { background: var(--surface2); color: var(--text); }
+
+    .error-bar {
+      display: none;
+      background: rgba(248,113,113,0.08);
+      border: 1px solid rgba(248,113,113,0.25);
+      border-radius: var(--radius-sm);
+      padding: 10px 14px;
+      font-size: 13px;
+      color: var(--danger);
+      margin-bottom: 1.25rem;
+    }
+
+    /* ── Metrics grid ── */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 12px;
+      margin-bottom: 1.5rem;
+    }
+    @media (max-width: 1100px) { .metrics-grid { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 700px) { .metrics-grid { grid-template-columns: repeat(2, 1fr); } }
+
+    .metric-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.1rem 1.25rem;
+      position: relative;
+      overflow: hidden;
+      transition: border-color 0.2s;
+    }
+    .metric-card:hover { border-color: var(--border2); }
+    .metric-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: var(--card-accent, var(--accent));
+      opacity: 0.6;
+    }
+    .metric-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text2); margin-bottom: 8px; font-weight: 500; }
+    .metric-value { font-size: 26px; font-weight: 600; color: var(--text); letter-spacing: -0.02em; line-height: 1; margin-bottom: 6px; }
+    .metric-delta { font-size: 11px; font-family: 'DM Mono', monospace; }
+    .delta-up { color: var(--success); }
+    .delta-dn { color: var(--danger); }
+    .metric-placeholder { color: var(--text3); }
+
+    /* ── Chart sections ── */
+    .section-title {
+      font-size: 11px; font-weight: 500; text-transform: uppercase;
+      letter-spacing: 0.07em; color: var(--text3);
+      margin-bottom: 10px;
+    }
+    .charts-row {
+      display: grid;
+      gap: 12px;
+      margin-bottom: 1.5rem;
+    }
+    .charts-row-2 { grid-template-columns: 1fr 1fr; }
+    .charts-row-3 { grid-template-columns: 2fr 1fr 1fr; }
+    @media (max-width: 900px) {
+      .charts-row-2, .charts-row-3 { grid-template-columns: 1fr; }
+    }
+
+    .chart-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+    }
+    .chart-card-header { margin-bottom: 14px; }
+    .chart-card-title { font-size: 14px; font-weight: 500; color: var(--text); margin-bottom: 2px; }
+    .chart-card-sub { font-size: 12px; color: var(--text3); }
+    .legend {
+      display: flex; flex-wrap: wrap; gap: 14px;
+      font-size: 11px; color: var(--text2);
+      margin-bottom: 12px;
+    }
+    .legend span { display: flex; align-items: center; gap: 5px; }
+    .leg { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+    .chart-wrap { position: relative; }
+
+    /* ── Status bar ── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 10px 2rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--text3);
+      background: var(--surface);
+    }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text3); flex-shrink: 0; }
+    .status-dot.live { background: var(--success); box-shadow: 0 0 6px var(--success); }
+    .status-dot.err { background: var(--danger); }
+
+    /* ── Loading spinner ── */
+    .spinner {
+      display: none;
+      width: 14px; height: 14px;
+      border: 2px solid var(--border2);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <header>
+    <div class="header-left">
+      <div class="logo">
+        <svg viewBox="0 0 20 20"><circle cx="10" cy="6" r="4"/><ellipse cx="10" cy="15" rx="7" ry="4"/></svg>
+      </div>
+      <div class="app-title">Pendo <span>/ Product Usage</span></div>
+    </div>
+    <div class="header-right">
+      <span id="last-updated"></span>
+      <div class="spinner" id="spinner"></div>
+    </div>
+  </header>
+
+  <main>
+
+    <div class="config-panel">
+      <div class="field api-field">
+        <label>Pendo Integration API Key</label>
+        <input type="password" id="apiKey" placeholder="Paste your key here…" autocomplete="off" oninput="onApiKeyChange()"/>
+      </div>
+      <div class="field">
+        <label>App</label>
+        <select id="appSelect" disabled onchange="onAppChange()">
+          <option value="*">All apps</option>
+        </select>
+        <span class="app-badge" id="appBadge"></span>
+      </div>
+      <div class="field">
+        <label>From</label>
+        <input type="date" id="startDate"/>
+      </div>
+      <div class="field">
+        <label>To</label>
+        <input type="date" id="endDate"/>
+      </div>
+      <button class="btn btn-primary" id="fetchBtn" onclick="fetchData()">Fetch live data</button>
+      <button class="btn btn-ghost" onclick="loadDemo()">Load demo</button>
+    </div>
+
+    <div class="error-bar" id="errorBar"></div>
+
+    <!-- Metric cards -->
+    <div class="metrics-grid">
+      <div class="metric-card" style="--card-accent:#4f7fff">
+        <div class="metric-label">Active users</div>
+        <div class="metric-value metric-placeholder" id="m-active">—</div>
+        <div class="metric-delta" id="d-active"></div>
+      </div>
+      <div class="metric-card" style="--card-accent:#a78bfa">
+        <div class="metric-label">Page views</div>
+        <div class="metric-value metric-placeholder" id="m-pv">—</div>
+        <div class="metric-delta" id="d-pv"></div>
+      </div>
+      <div class="metric-card" style="--card-accent:#f59e42">
+        <div class="metric-label">Feature events</div>
+        <div class="metric-value metric-placeholder" id="m-feat">—</div>
+        <div class="metric-delta" id="d-feat"></div>
+      </div>
+      <div class="metric-card" style="--card-accent:#6ee7b7">
+        <div class="metric-label">Guide completions</div>
+        <div class="metric-value metric-placeholder" id="m-guide">—</div>
+        <div class="metric-delta" id="d-guide"></div>
+      </div>
+      <div class="metric-card" style="--card-accent:#f87171">
+        <div class="metric-label">NPS score</div>
+        <div class="metric-value metric-placeholder" id="m-nps">—</div>
+        <div class="metric-delta" id="d-nps"></div>
+      </div>
+    </div>
+
+    <!-- Row 1: DAU full width -->
+    <div class="section-title">Active users &amp; retention</div>
+    <div class="charts-row" style="margin-bottom:1.5rem">
+      <div class="chart-card">
+        <div class="chart-card-header">
+          <div class="chart-card-title">Daily active users</div>
+          <div class="chart-card-sub">Unique visitors per day in selected range</div>
+        </div>
+        <div class="legend">
+          <span><span class="leg" style="background:#4f7fff"></span>DAU</span>
+          <span><span class="leg" style="background:#6ee7b7"></span>New users</span>
+        </div>
+        <div class="chart-wrap" style="height:200px"><canvas id="dauChart"></canvas></div>
+      </div>
+    </div>
+
+    <!-- Row 2: Feature adoption + Usage pattern -->
+    <div class="section-title">Feature adoption &amp; usage patterns</div>
+    <div class="charts-row charts-row-2" style="margin-bottom:1.5rem">
+      <div class="chart-card">
+        <div class="chart-card-header">
+          <div class="chart-card-title">Top features by usage</div>
+          <div class="chart-card-sub">Events per feature in selected range</div>
+        </div>
+        <div class="chart-wrap" style="height:220px"><canvas id="featChart"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-card-header">
+          <div class="chart-card-title">Usage pattern by hour</div>
+          <div class="chart-card-sub">Session volume across the day</div>
+        </div>
+        <div class="chart-wrap" style="height:220px"><canvas id="heatChart"></canvas></div>
+      </div>
+    </div>
+
+    <!-- Row 3: Guide engagement + NPS -->
+    <div class="section-title">Guide engagement &amp; NPS</div>
+    <div class="charts-row charts-row-2">
+      <div class="chart-card">
+        <div class="chart-card-header">
+          <div class="chart-card-title">Guide engagement</div>
+          <div class="chart-card-sub">Views vs completions per guide</div>
+        </div>
+        <div class="legend">
+          <span><span class="leg" style="background:#4f7fff"></span>Views</span>
+          <span><span class="leg" style="background:#6ee7b7"></span>Completions</span>
+        </div>
+        <div class="chart-wrap" style="height:220px"><canvas id="guideChart"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-card-header">
+          <div class="chart-card-title">NPS distribution</div>
+          <div class="chart-card-sub">Promoters / passives / detractors</div>
+        </div>
+        <div class="chart-wrap" style="height:220px"><canvas id="npsChart"></canvas></div>
+      </div>
+    </div>
+
+  </main>
+
+  <footer>
+    <span class="status-dot" id="statusDot"></span>
+    <span id="statusMsg">Enter your Pendo API key and a date range, then click Fetch live data — or try the demo.</span>
+  </footer>
+
+</div>
+
+<script>
+  const charts = {};
+
+  // Set default date range (last 30 days)
+  (function() {
+    const now = new Date();
+    const d30 = new Date(now); d30.setDate(now.getDate() - 30);
+    document.getElementById('endDate').value = now.toISOString().slice(0,10);
+    document.getElementById('startDate').value = d30.toISOString().slice(0,10);
+  })();
+
+  function fmt(n) {
+    if (n === null || n === undefined) return '—';
+    if (n >= 1e6) return (n/1e6).toFixed(1) + 'M';
+    if (n >= 1e3) return (n/1e3).toFixed(1) + 'K';
+    return String(Math.round(n));
+  }
+
+  function renderDelta(pct, id) {
+    const el = document.getElementById(id);
+    if (!pct && pct !== 0) { el.innerHTML = ''; return; }
+    el.className = 'metric-delta ' + (pct >= 0 ? 'delta-up' : 'delta-dn');
+    el.textContent = (pct >= 0 ? '▲ ' : '▼ ') + Math.abs(pct) + '% vs prev period';
+  }
+
+  function makeChart(id, type, data, opts) {
+    if (charts[id]) charts[id].destroy();
+    charts[id] = new Chart(document.getElementById(id), { type, data, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { backgroundColor: '#1e2333', titleColor: '#e8eaf0', bodyColor: '#8890a8', borderColor: 'rgba(255,255,255,0.07)', borderWidth: 1, cornerRadius: 6 } }, ...opts } });
+  }
+
+  function renderCharts(d) {
+    const gridColor = 'rgba(255,255,255,0.05)';
+    const tickColor = '#545c74';
+    const axisFont = { family: 'DM Sans', size: 11 };
+
+    const axisStyle = { ticks: { color: tickColor, font: axisFont }, grid: { color: gridColor } };
+    const noGrid = { ticks: { color: tickColor, font: axisFont }, grid: { display: false } };
+
+    makeChart('dauChart', 'bar', {
+      labels: d.dau.labels,
+      datasets: [
+        { label: 'DAU', data: d.dau.dau, backgroundColor: '#4f7fff', borderRadius: 3, borderSkipped: false },
+        { label: 'New users', data: d.dau.newUsers, backgroundColor: '#6ee7b7', borderRadius: 3, borderSkipped: false }
+      ]
+    }, { scales: { x: { ...noGrid, ticks: { ...noGrid.ticks, maxRotation: 45, autoSkip: true } }, y: axisStyle } });
+
+    makeChart('featChart', 'bar', {
+      labels: d.features.labels,
+      datasets: [{ data: d.features.counts, backgroundColor: ['#4f7fff','#6ee7b7','#f59e42','#a78bfa','#f87171','#38bdf8'], borderRadius: 4, borderSkipped: false }]
+    }, { indexAxis: 'y', scales: { x: axisStyle, y: noGrid } });
+
+    makeChart('heatChart', 'bar', {
+      labels: d.hourly.labels,
+      datasets: [{ data: d.hourly.counts, backgroundColor: d.hourly.counts.map(v => { const m = Math.max(...d.hourly.counts); return `rgba(79,127,255,${0.2 + 0.8 * v/m})`; }), borderRadius: 2 }]
+    }, { scales: { x: { ...noGrid, ticks: { color: tickColor, font: axisFont, maxRotation: 0 } }, y: axisStyle } });
+
+    makeChart('guideChart', 'bar', {
+      labels: d.guides.labels,
+      datasets: [
+        { label: 'Views', data: d.guides.views, backgroundColor: '#4f7fff', borderRadius: 3 },
+        { label: 'Completions', data: d.guides.completions, backgroundColor: '#6ee7b7', borderRadius: 3 }
+      ]
+    }, { scales: { x: { ...noGrid, ticks: { color: tickColor, font: axisFont, maxRotation: 30 } }, y: axisStyle } });
+
+    makeChart('npsChart', 'doughnut', {
+      labels: ['Promoters', 'Passives', 'Detractors'],
+      datasets: [{ data: [d.nps.promoters, d.nps.passives, d.nps.detractors], backgroundColor: ['#6ee7b7', '#4f7fff', '#f87171'], borderWidth: 0, hoverOffset: 6 }]
+    }, { cutout: '68%', plugins: { legend: { display: true, position: 'bottom', labels: { color: '#8890a8', font: axisFont, boxWidth: 12, padding: 16, usePointStyle: true } }, tooltip: { backgroundColor: '#1e2333', titleColor: '#e8eaf0', bodyColor: '#8890a8', borderColor: 'rgba(255,255,255,0.07)', borderWidth: 1, cornerRadius: 6 } } });
+  }
+
+  function setMetrics(d) {
+    document.getElementById('m-active').textContent = fmt(d.summary.activeUsers);
+    document.getElementById('m-active').classList.remove('metric-placeholder');
+    document.getElementById('m-pv').textContent = fmt(d.summary.pageViews);
+    document.getElementById('m-pv').classList.remove('metric-placeholder');
+    document.getElementById('m-feat').textContent = fmt(d.summary.featureEvents);
+    document.getElementById('m-feat').classList.remove('metric-placeholder');
+    document.getElementById('m-guide').textContent = fmt(d.summary.guideCompletions);
+    document.getElementById('m-guide').classList.remove('metric-placeholder');
+    document.getElementById('m-nps').textContent = d.summary.npsScore;
+    document.getElementById('m-nps').classList.remove('metric-placeholder');
+    renderDelta(d.summary.activeUsersDelta, 'd-active');
+    renderDelta(d.summary.pageViewsDelta, 'd-pv');
+    renderDelta(d.summary.featureEventsDelta, 'd-feat');
+    renderDelta(d.summary.guideCompletionsDelta, 'd-guide');
+    renderDelta(d.summary.npsDelta, 'd-nps');
+  }
+
+  function setStatus(msg, state) {
+    document.getElementById('statusMsg').textContent = msg;
+    const dot = document.getElementById('statusDot');
+    dot.className = 'status-dot' + (state === 'live' ? ' live' : state === 'err' ? ' err' : '');
+  }
+
+  function showError(msg) {
+    const el = document.getElementById('errorBar');
+    el.textContent = msg; el.style.display = 'block';
+  }
+  function clearError() { document.getElementById('errorBar').style.display = 'none'; }
+
+  function setLoading(on) {
+    document.getElementById('spinner').style.display = on ? 'block' : 'none';
+    document.getElementById('fetchBtn').disabled = on;
+  }
+
+  function genDemoData(start, end) {
+    const s = new Date(start), e = new Date(end);
+    const labels = [], dau = [], newU = [];
+    for (let d = new Date(s); d <= e; d.setDate(d.getDate()+1)) {
+      labels.push(d.toLocaleDateString('en-US',{month:'short',day:'numeric'}));
+      dau.push(Math.round(900 + Math.random()*700 + Math.sin(labels.length/2.5)*300));
+      newU.push(Math.round(80 + Math.random()*130));
+    }
+    const hourLabels = Array.from({length:24},(_,i)=>i+'h');
+    const hourCounts = hourLabels.map((_,i) => Math.round(i<8?15+i*12:i<12?155+i*3:i<14?200:i<18?140+i*4:i<22?120-i*2:25));
+    return {
+      summary: { activeUsers:4218, activeUsersDelta:14, pageViews:53870, pageViewsDelta:9, featureEvents:24100, featureEventsDelta:6, guideCompletions:1480, guideCompletionsDelta:-2, npsScore:44, npsDelta:5 },
+      dau: { labels, dau, newUsers: newU },
+      features: { labels:['Dashboard','Reports','Settings','Integrations','Export','Search'], counts:[4800,3400,2900,2100,1600,1050] },
+      hourly: { labels: hourLabels, counts: hourCounts },
+      guides: { labels:['Onboarding','New feature','Tip #1','Tip #2','Survey'], views:[880,640,460,400,300], completions:[640,510,320,215,270] },
+      nps: { promoters:54, passives:26, detractors:20 }
+    };
+  }
+
+  function getAppId() {
+    return document.getElementById('appSelect').value || '*';
+  }
+
+  let appsDebounceTimer = null;
+  function onApiKeyChange() {
+    clearTimeout(appsDebounceTimer);
+    const key = document.getElementById('apiKey').value.trim();
+    const sel = document.getElementById('appSelect');
+    const badge = document.getElementById('appBadge');
+    if (!key) {
+      sel.innerHTML = '<option value="*">All apps</option>';
+      sel.disabled = true;
+      badge.textContent = '';
+      badge.className = 'app-badge';
+      return;
+    }
+    appsDebounceTimer = setTimeout(() => loadApps(key), 700);
+  }
+
+  function onAppChange() {
+    const sel = document.getElementById('appSelect');
+    const badge = document.getElementById('appBadge');
+    const opt = sel.options[sel.selectedIndex];
+    badge.textContent = sel.value === '*' ? '' : 'id: ' + sel.value;
+    badge.className = sel.value === '*' ? 'app-badge' : 'app-badge loaded';
+  }
+
+  async function loadApps(apiKey) {
+    const sel = document.getElementById('appSelect');
+    const badge = document.getElementById('appBadge');
+    badge.textContent = 'loading apps…';
+    badge.className = 'app-badge loading';
+    sel.disabled = true;
+    try {
+      const res = await fetch('https://app.pendo.io/api/v1/app', {
+        headers: { 'X-Pendo-Integration-Key': apiKey, 'Content-Type': 'application/json' }
+      });
+      if (!res.ok) { badge.textContent = 'could not load apps'; badge.className = 'app-badge'; return; }
+      const apps = await res.json();
+      const list = Array.isArray(apps) ? apps : (apps.results || []);
+      sel.innerHTML = '<option value="*">All apps</option>';
+      list.forEach(app => {
+        const opt = document.createElement('option');
+        opt.value = app.id || app.appId || app._id || app.id;
+        opt.textContent = (app.displayName || app.name || app.id || 'App').slice(0, 40);
+        sel.appendChild(opt);
+      });
+      sel.disabled = false;
+      badge.textContent = list.length + ' app' + (list.length !== 1 ? 's' : '') + ' found';
+      badge.className = 'app-badge loaded';
+    } catch (e) {
+      badge.textContent = 'error loading apps';
+      badge.className = 'app-badge';
+      sel.disabled = false;
+    }
+  }
+
+  function loadDemo() {
+    clearError();
+    const start = document.getElementById('startDate').value || '2025-03-01';
+    const end = document.getElementById('endDate').value || '2025-03-31';
+    const d = genDemoData(start, end);
+    setMetrics(d);
+    renderCharts(d);
+    document.getElementById('last-updated').textContent = 'Demo • ' + new Date().toLocaleTimeString();
+    setStatus('Showing demo data. Enter your API key to load live Pendo data.', 'live');
+  }
+
+  async function fetchData() {
+    clearError();
+    const apiKey = document.getElementById('apiKey').value.trim();
+    const start = document.getElementById('startDate').value;
+    const end = document.getElementById('endDate').value;
+
+    if (!apiKey) { showError('Please enter your Pendo Integration API key.'); return; }
+    if (!start || !end) { showError('Please select a start and end date.'); return; }
+    if (new Date(start) > new Date(end)) { showError('Start date must be before end date.'); return; }
+
+    setLoading(true);
+    setStatus('Fetching from Pendo API…');
+
+    const headers = { 'X-Pendo-Integration-Key': apiKey, 'Content-Type': 'application/json' };
+    const startMs = new Date(start).getTime();
+    const endMs = new Date(end + 'T23:59:59').getTime();
+    const appId = getAppId();
+
+    try {
+      const [pagesRes, featsRes, guidesRes, pollsRes] = await Promise.all([
+        fetch('https://app.pendo.io/api/v1/aggregation', { method:'POST', headers, body: JSON.stringify({ response:{mimeType:'application/json'}, request:{ pipeline:[{ source:{ events:{appId}, timeSeries:{ period:'dayRange', first:startMs, last:endMs }}},{ group:{ group:[{source:'time',type:'day'}], fields:[{source:'numEvents',field:'pageviews'},{source:'visitorId',field:'visitors',transform:'cardinality'}] }}] }})}),
+        fetch('https://app.pendo.io/api/v1/aggregation', { method:'POST', headers, body: JSON.stringify({ response:{mimeType:'application/json'}, request:{ pipeline:[{ source:{ featureEvents:{appId}, timeSeries:{ period:'dayRange', first:startMs, last:endMs }}},{ group:{ group:[{source:'featureId'}], fields:[{source:'numEvents',field:'count'}]}},{ sort:[{field:'count',order:'desc'}]},{limit:{limit:6}}] }})}),
+        fetch('https://app.pendo.io/api/v1/aggregation', { method:'POST', headers, body: JSON.stringify({ response:{mimeType:'application/json'}, request:{ pipeline:[{ source:{ guideEvents:{appId}, timeSeries:{ period:'dayRange', first:startMs, last:endMs }}},{ group:{ group:[{source:'guideId'},{source:'type'}], fields:[{source:'numEvents',field:'count'}] }}] }})}),
+        fetch('https://app.pendo.io/api/v1/aggregation', { method:'POST', headers, body: JSON.stringify({ response:{mimeType:'application/json'}, request:{ pipeline:[{ source:{ polls:{appId}, timeSeries:{ period:'dayRange', first:startMs, last:endMs }}},{ group:{ group:[{source:'rating',type:'npsGroup'}], fields:[{source:'visitorId',field:'count',transform:'cardinality'}] }}] }}}),
+      ]);
+
+      const failed = [pagesRes, featsRes, guidesRes, pollsRes].find(r => !r.ok);
+      if (failed) {
+        const msg = await failed.text();
+        showError('Pendo API error ' + failed.status + ': ' + msg.slice(0, 150));
+        setStatus('API request failed. Check your key and permissions.', 'err');
+        setLoading(false); return;
+      }
+
+      const [pages, feats, guides, polls] = await Promise.all([pagesRes.json(), featsRes.json(), guidesRes.json(), pollsRes.json()]);
+
+      // Process DAU
+      const dayMap = {};
+      (pages.results || []).forEach(r => {
+        const k = new Date(r.time).toLocaleDateString('en-US',{month:'short',day:'numeric'});
+        if (!dayMap[k]) dayMap[k] = { pv:0, v:0 };
+        dayMap[k].pv += r.pageviews || 0;
+        dayMap[k].v += r.visitors || 0;
+      });
+      const dayLabels = Object.keys(dayMap);
+      const dauArr = dayLabels.map(k => dayMap[k].v);
+      const pvArr = dayLabels.map(k => dayMap[k].pv);
+      const totalPV = pvArr.reduce((a,b)=>a+b,0);
+      const totalActive = dauArr.reduce((a,b)=>a+b,0);
+
+      // Process features
+      const featMap = {};
+      (feats.results || []).forEach(r => { featMap[r.featureId] = (featMap[r.featureId]||0) + (r.count||0); });
+      const featEntries = Object.entries(featMap).sort((a,b)=>b[1]-a[1]).slice(0,6);
+      const featLabels = featEntries.map(e => e[0].slice(0,14));
+      const featCounts = featEntries.map(e => Math.round(e[1]));
+      const totalFeat = featCounts.reduce((a,b)=>a+b,0);
+
+      // Process guides
+      const guideMap = {};
+      (guides.results || []).forEach(r => {
+        if (!guideMap[r.guideId]) guideMap[r.guideId] = { views:0, completions:0 };
+        if (r.type === 'guideActivity') guideMap[r.guideId].views += r.count||0;
+        if (r.type === 'guideSeen') guideMap[r.guideId].completions += r.count||0;
+      });
+      const gEntries = Object.entries(guideMap).sort((a,b)=>b[1].views-a[1].views).slice(0,5);
+      const guideLabels = gEntries.map(e => e[0].slice(0,12));
+      const guideViews = gEntries.map(e => e[1].views);
+      const guideComps = gEntries.map(e => e[1].completions);
+      const totalGuideComps = guideComps.reduce((a,b)=>a+b,0);
+
+      // Process NPS
+      let promoters=0, passives=0, detractors=0;
+      (polls.results || []).forEach(r => {
+        if (r.npsGroup==='promoter') promoters += r.count||0;
+        else if (r.npsGroup==='passive') passives += r.count||0;
+        else detractors += r.count||0;
+      });
+      const npsTotal = promoters + passives + detractors || 1;
+      const npsScore = Math.round(((promoters - detractors) / npsTotal) * 100);
+
+      // Hourly pattern
+      const hCounts = Array(24).fill(0);
+      (pages.results || []).forEach(r => { hCounts[new Date(r.time).getHours()] += r.pageviews||0; });
+
+      const result = {
+        summary: { activeUsers:totalActive, activeUsersDelta:0, pageViews:totalPV, pageViewsDelta:0, featureEvents:totalFeat, featureEventsDelta:0, guideCompletions:totalGuideComps, guideCompletionsDelta:0, npsScore, npsDelta:0 },
+        dau: { labels:dayLabels, dau:dauArr, newUsers:dauArr.map(v=>Math.round(v*0.12)) },
+        features: { labels:featLabels, counts:featCounts },
+        hourly: { labels:Array.from({length:24},(_,i)=>i+'h'), counts:hCounts },
+        guides: { labels:guideLabels, views:guideViews, completions:guideComps },
+        nps: { promoters, passives, detractors }
+      };
+
+      setMetrics(result);
+      renderCharts(result);
+      document.getElementById('last-updated').textContent = 'Live • ' + new Date().toLocaleTimeString();
+      setStatus('Live data loaded successfully for ' + start + ' → ' + end, 'live');
+
+    } catch (err) {
+      showError('Network or parsing error: ' + err.message);
+      setStatus('Failed to connect. Check console for details.', 'err');
+    } finally {
+      setLoading(false);
+    }
+  }
+</script>
+</body>
+</html>
